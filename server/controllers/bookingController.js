@@ -15,14 +15,12 @@ const createBooking = async (req, res) => {
 
     const totalPrice = movie.price * seats
 
-    // Gjenero QR Token
     const qrToken = jwt.sign(
       { movieId, movieTitle, showtime, customerName, seats },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
 
-    // Gjenero QR Code si imazh
     const qrCode = await QRCode.toDataURL(qrToken)
 
     const booking = new Booking({
@@ -51,10 +49,8 @@ const checkIn = async (req, res) => {
   try {
     const { qrToken } = req.body
 
-    // Verifiko JWT
-    const decoded = jwt.verify(qrToken, process.env.JWT_SECRET)
+    jwt.verify(qrToken, process.env.JWT_SECRET)
 
-    // Gjej booking
     const booking = await Booking.findOne({ qrToken })
 
     if (!booking) {
@@ -67,7 +63,6 @@ const checkIn = async (req, res) => {
       return res.status(400).json({ valid: false, message: '❌ Biletë e anuluar!' })
     }
 
-    // Shëno si të ardhur
     booking.status = 'used'
     booking.checkedInAt = new Date()
     await booking.save()
@@ -89,8 +84,23 @@ const getStats = async (req, res) => {
     const total = await Booking.countDocuments()
     const checkedIn = await Booking.countDocuments({ status: 'used' })
     const active = await Booking.countDocuments({ status: 'active' })
+    const cancelled = await Booking.countDocuments({ status: 'cancelled' })
 
-    res.json({ total, checkedIn, active })
+    const revenueData = await Booking.aggregate([
+      { $match: { status: { $in: ['active', 'used'] } } },
+      { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+    ])
+    const revenue = revenueData[0]?.total || 0
+
+    const byMovie = await Booking.aggregate([
+      { $group: { _id: '$movieTitle', count: { $sum: 1 }, revenue: { $sum: '$totalPrice' } } },
+      { $sort: { count: -1 } }
+    ])
+
+    const bookings = await Booking.find().sort({ createdAt: -1 })
+
+    res.json({ total, checkedIn, active, cancelled, revenue, byMovie, bookings })
+
   } catch (error) {
     res.status(500).json({ message: 'Gabim në server' })
   }

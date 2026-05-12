@@ -5,6 +5,7 @@ import MoviePage from './pages/MoviePage'
 import BookingPage from './pages/BookingPage'
 import ConfirmationPage from './pages/ConfirmationPage'
 import CheckinPage from './pages/CheckinPage'
+import AdminPage from './pages/AdminPage'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/book/:id" element={<BookingPage />} />
         <Route path="/confirmation" element={<ConfirmationPage />} />
         <Route path="/checkin" element={<CheckinPage />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </div>
   )
