@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import jsQR from 'jsqr'
 import { checkIn } from '../services/api'
+import { useAuth } from '../context/useAuth'
+import { useNavigate } from 'react-router-dom'
 
 function CheckinPage() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+
+  const { logoutStaff } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logoutStaff()
+    navigate('/staff-login')
+  }
 
   const processFile = async (file) => {
     if (!file) return
@@ -16,16 +26,18 @@ function CheckinPage() {
       const decodedText = await scanQRWithJsQR(file)
 
       if (!decodedText) {
-        setResult({ success: false, message: '❌ QR kodi nuk u lexua! Provo me imazh më të qartë.' })
+        setResult({ success: false, message: '❌ QR kodi nuk u lexua!' })
         return
       }
 
       const res = await checkIn(decodedText)
+
       setResult({
         success: true,
         message: res.data.message,
         booking: res.data.booking
       })
+
     } catch (err) {
       setResult({
         success: false,
@@ -40,17 +52,22 @@ function CheckinPage() {
     return new Promise((resolve, reject) => {
       const img = new Image()
       const url = URL.createObjectURL(file)
+
       img.onload = () => {
         const canvas = document.createElement('canvas')
         canvas.width = img.width
         canvas.height = img.height
+
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0)
+
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
         const code = jsQR(imageData.data, imageData.width, imageData.height)
+
         URL.revokeObjectURL(url)
         resolve(code ? code.data : null)
       }
+
       img.onerror = reject
       img.src = url
     })
@@ -61,6 +78,7 @@ function CheckinPage() {
   const handleDrop = (e) => {
     e.preventDefault()
     setDragOver(false)
+
     const file = e.dataTransfer.files[0]
     if (file && file.type.startsWith('image/')) {
       processFile(file)
@@ -71,16 +89,28 @@ function CheckinPage() {
     <div className="max-w-lg mx-auto px-4 md:px-6 py-10 animate-fade-in">
 
       {/* Header */}
-      <div className="text-center mb-8">
-        <div className="text-5xl mb-4">📱</div>
-        <h1 className="text-3xl font-bold text-yellow-400 mb-2">Staff Check-in</h1>
-        <p className="text-gray-400">Ngarko screenshot-in e QR kodit të biletës</p>
+      <div className="flex justify-between items-center mb-8">
+        <div className="text-center flex-1">
+          <div className="text-5xl mb-2">📱</div>
+          <h1 className="text-3xl font-bold text-yellow-400">Staff Check-in</h1>
+          <p className="text-gray-400 text-sm mt-1">Ngarko QR kodin e biletës</p>
+        </div>
+
+        <button
+          onClick={handleLogout}
+          className="bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-red-500/30 transition"
+        >
+          Dil 🚪
+        </button>
       </div>
 
-      {/* Upload Box */}
+      {/* Upload */}
       {!result && (
         <label
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragOver={(e) => {
+            e.preventDefault()
+            setDragOver(true)
+          }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           className={`block border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 ${
@@ -94,34 +124,22 @@ function CheckinPage() {
           {loading ? (
             <div>
               <div className="w-16 h-16 border-4 border-gray-700 border-t-yellow-400 rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-yellow-400 text-xl font-semibold animate-pulse">
-                Duke skanuar QR...
+              <p className="text-yellow-400 text-xl font-semibold">
+                Duke skanuar...
               </p>
             </div>
           ) : (
             <div>
-              <div className="text-6xl mb-4">
-                {dragOver ? '📂' : '📸'}
-              </div>
+              <div className="text-6xl mb-4">{dragOver ? '📂' : '📸'}</div>
               <p className="text-white text-xl font-semibold mb-2">
-                {dragOver ? 'Lësho imazhin këtu!' : 'Ngarko QR Kodin'}
+                {dragOver ? 'Lësho këtu!' : 'Ngarko QR Kodin'}
               </p>
-              <p className="text-gray-500 text-sm mb-4">
-                Kliko ose tërhiq imazhin e QR këtu
+              <p className="text-gray-500 text-sm">
+                Kliko ose tërhiq screenshot-in e QR
               </p>
-              <div className="flex justify-center gap-2">
-                <span className="bg-blue-500/20 text-blue-400 border border-blue-500/50 px-3 py-1 rounded-full text-xs font-semibold">
-                  PNG
-                </span>
-                <span className="bg-blue-500/20 text-blue-400 border border-blue-500/50 px-3 py-1 rounded-full text-xs font-semibold">
-                  JPG
-                </span>
-                <span className="bg-blue-500/20 text-blue-400 border border-blue-500/50 px-3 py-1 rounded-full text-xs font-semibold">
-                  Screenshot
-                </span>
-              </div>
             </div>
           )}
+
           <input
             type="file"
             accept="image/*"
@@ -132,9 +150,9 @@ function CheckinPage() {
         </label>
       )}
 
-      {/* Rezultati */}
+      {/* Result */}
       {result && (
-        <div className={`rounded-2xl p-8 text-center border-2 animate-fade-in ${
+        <div className={`rounded-2xl p-8 text-center border-2 ${
           result.success
             ? 'bg-green-900/30 border-green-500'
             : 'bg-red-900/30 border-red-500'
@@ -142,42 +160,50 @@ function CheckinPage() {
           <div className="text-7xl mb-4">
             {result.success ? '✅' : '❌'}
           </div>
+
           <p className="text-2xl font-bold text-white mb-4">
             {result.message}
           </p>
 
           {result.success && result.booking && (
             <div className="bg-black/30 rounded-xl p-4 text-left space-y-3 mb-6">
-              {[
-                { label: 'Filmi', value: result.booking.movieTitle },
-                { label: 'Emri', value: result.booking.customerName },
-                { label: 'Vendet', value: result.booking.seats },
-                { label: 'Totali', value: `${result.booking.totalPrice}€` },
-              ].map((item, i) => (
-                <div key={i} className="flex justify-between">
-                  <span className="text-gray-400">{item.label}:</span>
-                  <span className={`font-semibold ${i === 3 ? 'text-yellow-400' : 'text-white'}`}>
-                    {item.value}
-                  </span>
-                </div>
-              ))}
+              <div className="flex justify-between">
+                <span className="text-gray-400">Filmi:</span>
+                <span className="text-white font-semibold">
+                  {result.booking.movieTitle}
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-400">Emri:</span>
+                <span className="text-white">
+                  {result.booking.customerName}
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-400">Vendet:</span>
+                <span className="text-white">
+                  {result.booking.seats}
+                </span>
+              </div>
+
+              <div className="flex justify-between border-t border-gray-700 pt-2">
+                <span className="text-gray-400">Totali:</span>
+                <span className="text-yellow-400 font-bold">
+                  {result.booking.totalPrice}€
+                </span>
+              </div>
             </div>
           )}
 
           <button
             onClick={() => setResult(null)}
-            className="w-full bg-yellow-500 text-black py-3 rounded-xl font-bold hover:bg-yellow-400 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full bg-yellow-500 text-black py-3 rounded-xl font-bold hover:bg-yellow-400 transition"
           >
             Skano Tjetrin →
           </button>
         </div>
-      )}
-
-      {/* Info */}
-      {!result && !loading && (
-        <p className="text-center text-gray-600 text-sm mt-6">
-          🔐 Kjo faqe është vetëm për stafin e autorizuar
-        </p>
       )}
     </div>
   )
