@@ -1,10 +1,10 @@
 import axios from 'axios'
 
 const API = axios.create({
-  baseURL: 'http://localhost:5000'
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000'
 })
 
-// --- AUTH FUNCTIONS (Këto shtohen tani) ---
+// --- AUTH FUNCTIONS ---
 export const login = (credentials) => API.post('/api/auth/login', credentials)
 export const register = (userData) => API.post('/api/auth/register', userData)
 export const staffLogin = (code) => API.post('/api/auth/staff-login', { code })
