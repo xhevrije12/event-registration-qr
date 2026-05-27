@@ -1,0 +1,244 @@
+================================================================================
+AI-LOG.TXT — CineCloud Project
+Course: Cloud Computing / Mobile Cloud Computing 2026
+Student: Xhevrije Xhelili
+Topic: 06 — Event Registration Platform with QR Check-in
+AI Tool Used: Claude (Anthropic) — claude.ai
+================================================================================
+
+--------------------------------------------------------------------------------
+LOG #01 — Project Structure & Stack Selection
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"I need to build a cloud-based event registration platform with QR check-in
+for my MCC 2026 course. What tech stack should I use and how should I
+structure the project?"
+
+AI HELP RECEIVED:
+- Suggested React + Vite for frontend, Node.js + Express for backend
+- Recommended MongoDB Atlas as the cloud database
+- Proposed JWT for authentication and qrcode npm package for QR generation
+- Suggested jsQR for client-side QR scanning from screenshots
+- Provided the full folder structure:
+  client/ (React), server/ (Express), with controllers/models/routes pattern
+- Recommended Render.com for backend and Vercel for frontend deployment
+
+WHAT I IMPLEMENTED:
+Adopted the suggested stack. Adapted the "event registration" topic to a
+cinema booking system (CineCloud) to make it more practical and demonstrable.
+
+--------------------------------------------------------------------------------
+LOG #02 — MongoDB Atlas Connection & Mongoose Models
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"How do I connect MongoDB Atlas to my Express backend using Mongoose?
+Also help me create models for Movie, Booking, and User."
+
+AI HELP RECEIVED:
+- Provided mongoose.connect() setup with dotenv for the connection string
+- Showed the Mongoose schema structure for all three models
+- Booking model includes: movieId, movieTitle, showtime, customerName,
+  customerEmail, seats, totalPrice, qrCode, qrToken, status, checkedInAt
+- Movie model includes: title, description, genre, duration, poster,
+  showtimes[], price, availableSeats
+- User model includes bcryptjs pre-save hook for password hashing
+
+WHAT I IMPLEMENTED:
+Used the suggested models with minor adjustments. Added status enum
+('active', 'used', 'cancelled') to Booking model for check-in tracking.
+
+--------------------------------------------------------------------------------
+LOG #03 — QR Code Generation & Check-in Logic
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"How do I generate a QR code when a booking is created and then validate it
+during check-in? The staff should upload a screenshot of the QR."
+
+AI HELP RECEIVED:
+- Suggested using JWT as the QR token payload (embed booking info inside it)
+- Provided bookingController.js logic:
+  * createBooking: generates JWT token, then QRCode.toDataURL(token)
+  * checkIn: jwt.verify() the token, find booking by qrToken, update status
+- For frontend scanning: suggested jsQR library with canvas API
+- Showed the CheckinPage.jsx pattern using FileReader + canvas + jsQR
+
+WHAT I IMPLEMENTED:
+Implemented exactly as suggested. The QR contains a signed JWT so it cannot
+be forged. Status changes from 'active' to 'used' upon successful scan.
+
+--------------------------------------------------------------------------------
+LOG #04 — Staff Authentication
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"I need a simple staff login — no user accounts, just a shared staff code.
+How do I implement this with JWT?"
+
+AI HELP RECEIVED:
+- Suggested storing STAFF_CODE in .env
+- staffLogin controller: compare req.body.code with process.env.STAFF_CODE
+- On match: sign JWT with { role: 'staff' } and return token
+- Frontend: store token in localStorage as 'staffToken'
+- StaffRoute.jsx component: redirect to /staff-login if not authenticated
+
+WHAT I IMPLEMENTED:
+Used the suggested approach. Staff code is 'staff2025' stored in .env.
+Added AuthContext and AuthProvider for state management across the app.
+
+--------------------------------------------------------------------------------
+LOG #05 — Frontend Pages & API Service
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"Help me set up axios in React with a base URL from environment variables,
+and create all the API call functions for movies, bookings, and auth."
+
+AI HELP RECEIVED:
+- Showed axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000' })
+- Provided interceptor pattern to auto-attach JWT token from localStorage
+- Listed all API functions: getMovies, getMovieById, createBooking,
+  checkIn, getStats, staffLogin
+
+WHAT I IMPLEMENTED:
+Used the suggested api.js service. Added the staffToken interceptor logic
+to support both regular and staff authentication tokens.
+
+--------------------------------------------------------------------------------
+LOG #06 — Admin Dashboard & Statistics
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"I want an admin page that shows total bookings, check-in rate, revenue,
+and a breakdown by movie. How do I aggregate this in MongoDB?"
+
+AI HELP RECEIVED:
+- Showed MongoDB aggregation pipeline for getStats:
+  * countDocuments() for total, checkedIn, active, cancelled
+  * $group with $sum for revenue calculation
+  * $group by movieTitle for per-movie breakdown
+- Suggested returning all bookings sorted by createdAt for a booking list
+
+WHAT I IMPLEMENTED:
+Implemented the full AdminPage.jsx with tabs (overview by movie, full
+booking list), check-in progress bar, and live refresh every 30 seconds.
+
+--------------------------------------------------------------------------------
+LOG #07 — Seed Data
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"Help me create a seed script to populate 12 movies with real poster URLs,
+showtimes for the next few weeks, different genres and prices."
+
+AI HELP RECEIVED:
+- Provided seed.js structure using Movie.deleteMany() then Movie.insertMany()
+- Suggested using TMDB poster URLs (image.tmdb.org/t/p/w500/...)
+- Organized movies into 3 sections: new releases, classics, action/adventure
+
+WHAT I IMPLEMENTED:
+Created seed.js with 12 movies including Inception, The Dark Knight,
+Interstellar, Avatar, Joker, Pulp Fiction, Forrest Gump, The Matrix,
+John Wick, Spider-Man: No Way Home, The Lion King, Gladiator.
+
+--------------------------------------------------------------------------------
+LOG #08 — CORS Configuration
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"After deploying to Vercel and Render, the frontend can't call the backend.
+I'm getting a CORS error. How do I fix the CORS config in Express?"
+
+AI HELP RECEIVED:
+- Explained that CORS must explicitly allow the Vercel domain
+- Suggested using a regex /\.vercel\.app$/ to allow all Vercel preview URLs
+- Provided the final cors() config with origin array + regex pattern
+
+WHAT I IMPLEMENTED:
+Updated server/index.js cors config to allow localhost:5173, localhost:5174,
+and all *.vercel.app domains using the regex pattern.
+
+--------------------------------------------------------------------------------
+LOG #09 — Vercel Deployment Debugging (VITE_API_URL)
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"My Vercel frontend is still calling localhost:5000 even though I set
+VITE_API_URL in Vercel environment variables. What's wrong?"
+
+AI HELP RECEIVED:
+- Explained that Vite bakes env vars at build time, not runtime
+- If the build ran before the env var was added, it uses the fallback
+- Two solutions offered:
+  1. Add .env.production file to client/ and commit it
+  2. Use a hardcoded fallback URL directly in api.js
+- Also identified that the Vercel root directory must be set to 'client'
+  and framework preset must be 'Vite'
+
+WHAT I IMPLEMENTED:
+Changed the fallback in api.js from 'http://localhost:5000' to
+'https://cinecloud-api.onrender.com' so even if VITE_API_URL is missing
+from the build, the correct backend URL is used.
+
+--------------------------------------------------------------------------------
+LOG #10 — README & Documentation
+Date: May 2026
+Tool: Claude (Anthropic)
+--------------------------------------------------------------------------------
+
+PROMPT:
+"Help me write a complete README.md for my project that covers the setup,
+environment variables, API endpoints, deployment guide, and user flow."
+
+AI HELP RECEIVED:
+- Provided full README structure with all sections:
+  tech stack table, env variables, local setup steps, API endpoint table,
+  user flow diagram, cloud services table, deployment guide, known limitations
+- Suggested adding a /screenshots folder with demo images
+
+WHAT I IMPLEMENTED:
+Used the suggested README structure, adapted to CineCloud specifics.
+
+================================================================================
+SUMMARY
+================================================================================
+
+Total AI interactions: 10 major sessions
+Primary tool: Claude by Anthropic (claude.ai)
+
+Areas where AI helped most:
+  1. Architecture decisions (stack, folder structure)
+  2. QR code flow (JWT-as-token pattern)
+  3. MongoDB aggregation for statistics
+  4. Deployment debugging (CORS + env vars)
+
+Areas written independently (without AI):
+  1. All UI design decisions and Tailwind styling
+  2. Albanian language UI text
+  3. Movie selection and seed data content
+  4. Project adaptation from "events" to "cinema"
+  5. HeroBanner, NewsTicker, MovieCard visual components
+
+================================================================================
+END OF LOG
+================================================================================
